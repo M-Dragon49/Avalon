@@ -140,9 +140,6 @@
         
         let localReady = false;
         let remoteReady = false;
-        
-        // SỬA LỖI LƯỢT ĐI: Biến lưu trữ xem mình có phải người CHIẾN THẮNG ván trước không
-        let didIWin = false; 
 
         let myName = "";
         let oppName = "Đối Thủ";
@@ -297,20 +294,16 @@
             return { row: randRow.i, take: 1 };
         }
 
-        // --- GIAO DIỆN & LUẬT: NGƯỜI THẮNG ĐI TRƯỚC ---
+        // --- GIAO DIỆN & RANDOM LƯỢT ---
         function startTurnSequence(iStart, opponentName, isRandom) {
             const overlay = document.getElementById('randomizing-overlay');
             overlay.style.display = 'flex';
             document.getElementById('name-you').innerText = myName;
             document.getElementById('random-msg').style.color = "var(--gold)"; 
 
-            if (isRandom) {
-                document.getElementById('random-msg').innerText = "Đang tung đồng xu...";
-                document.getElementById('random-sub').innerText = "Ai sẽ đi trước đây?";
-            } else {
-                document.getElementById('random-msg').innerText = "Đang xét lượt...";
-                document.getElementById('random-sub').innerText = "Luật: Người thắng ván trước đi trước!";
-            }
+            // Luôn luôn hiển thị Tung đồng xu
+            document.getElementById('random-msg').innerText = "Đang tung đồng xu...";
+            document.getElementById('random-sub').innerText = "Ai sẽ đi trước đây?";
             
             setTimeout(() => {
                 document.getElementById('random-msg').innerText = iStart ? `${myName.toUpperCase()} ĐI TRƯỚC!` : `${opponentName.toUpperCase()} ĐI TRƯỚC!`;
@@ -418,9 +411,6 @@
                 const winName = (last === "YOU" ? oppName : myName);
                 const isYouWin = (winName === myName);
                 
-                // CẬP NHẬT CHÍNH XÁC: Ghi nhớ trạng thái Chiến thắng của bản thân để xét lượt ván sau
-                didIWin = isYouWin; 
-
                 if(isYouWin) scores.you++; else scores.opp++;
                 document.getElementById('s-you').innerText = scores.you;
                 document.getElementById('s-opp').innerText = scores.opp;
@@ -446,8 +436,10 @@
                 setTimeout(() => {
                     overlay.style.display = 'none';
                     resetGameUI();
-                    // Nếu chơi với Bot, ai thắng ván trước đi trước
-                    startTurnSequence(didIWin, oppName, false);
+                    
+                    // BOT Mode: Tung đồng xu random lại từ đầu
+                    const randomStarter = Math.random() < 0.5;
+                    startTurnSequence(randomStarter, oppName, true);
                 }, 1000);
             } else {
                 localReady = true;
@@ -482,10 +474,10 @@
                     resetGameUI();
 
                     if (isHost) {
-                        // BẢN VÁ LỖI LƯỢT ĐI ONLINE: Host truyền chính xác việc Host có đi trước hay không (dựa vào việc Host có Thắng hay không)
-                        const hostStartsNext = didIWin; 
-                        conn.send({type: 'START_INFO', youStart: !hostStartsNext, hostName: myName, isRandom: false});
-                        startTurnSequence(hostStartsNext, oppName, false);
+                        // Online Mode: Tung đồng xu random lại từ đầu
+                        const randomStarter = Math.random() < 0.5;
+                        conn.send({type: 'START_INFO', youStart: !randomStarter, hostName: myName, isRandom: true});
+                        startTurnSequence(randomStarter, oppName, true);
                     }
                 }, 1000);
             }
