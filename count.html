@@ -3,178 +3,221 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Rắn Săn Mồi</title>
+    <title>Game Đếm Số Chiến Lược</title>
     <style>
-        /* CSS dùng để trang trí giao diện */
+        /* CSS trang trí giao diện */
         body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: #2c3e50; /* Màu nền tối */
-            color: white;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin-top: 50px;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
         }
-        canvas {
-            background-color: #34495e; /* Màu nền khung game */
-            border: 4px solid #ecf0f1;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            border-radius: 5px;
+        .game-container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 450px;
         }
-        .score-board {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: #f1c40f;
+        h1 {
+            color: #2c3e50;
+            margin-top: 0;
         }
-        .instructions {
-            margin-top: 20px;
-            color: #bdc3c7;
+        .rule {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        input[type="number"] {
+            width: 80px;
+            padding: 10px;
             font-size: 16px;
-            background: rgba(0,0,0,0.2);
+            border: 2px solid #bdc3c7;
+            border-radius: 6px;
+            text-align: center;
+        }
+        button {
             padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            background-color: #3498db;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .btn-action {
+            background-color: #2ecc71;
+            width: 80px;
+            height: 50px;
+            font-size: 20px;
+        }
+        .btn-action:hover {
+            background-color: #27ae60;
+        }
+        .btn-action:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .status-box {
+            background-color: #ecf0f1;
+            padding: 20px;
             border-radius: 8px;
+            margin: 20px 0;
+        }
+        .number-display {
+            font-size: 48px;
+            font-weight: bold;
+            color: #e74c3c;
+            margin: 10px 0;
+        }
+        .player-turn {
+            font-size: 20px;
+            font-weight: bold;
+            color: #8e44ad;
+        }
+        .player-2-turn {
+            color: #d35400; /* Đổi màu cho người chơi 2 */
+        }
+        /* Ẩn các khu vực chưa cần thiết */
+        #gameplay-area, #result-area {
+            display: none;
         }
     </style>
 </head>
 <body>
 
-    <div class="score-board">Điểm của bạn: <span id="score">0</span></div>
-    
-    <canvas id="gameCanvas" width="400" height="400"></canvas>
-    
-    <div class="instructions">🎮 <b>CÁCH CHƠI:</b> Sử dụng các phím mũi tên ⬅️ ⬆️ ⬇️ ➡️ để di chuyển.</div>
+    <div class="game-container">
+        <h1>🎯 Đếm Số Chiến Lược</h1>
+        <div class="rule">Mỗi lượt chọn đếm thêm 1, 2 hoặc 3 số.<br>Ai đếm tới đích trước sẽ <b>CHIẾN THẮNG</b>!</div>
+
+        <div id="setup-area">
+            <h3>Nhập số mục tiêu:</h3>
+            <input type="number" id="targetInput" value="30" min="5">
+            <br><br>
+            <button onclick="startGame()">Bắt Đầu Chơi</button>
+        </div>
+
+        <div id="gameplay-area">
+            <div class="status-box">
+                <div>Mục tiêu cần đạt: <b id="targetDisplay">30</b></div>
+                <div class="number-display" id="currentNumberDisplay">0</div>
+                <div>Khoảng cách đến đích: <b id="remainingDisplay">30</b></div>
+            </div>
+
+            <div class="player-turn" id="playerTurnDisplay">Đến lượt: Người chơi 1</div>
+            <br>
+            
+            <p>Chọn số lượng muốn đếm thêm:</p>
+            <div>
+                <button class="btn-action" id="btn1" onclick="countNumber(1)">+1</button>
+                <button class="btn-action" id="btn2" onclick="countNumber(2)">+2</button>
+                <button class="btn-action" id="btn3" onclick="countNumber(3)">+3</button>
+            </div>
+        </div>
+
+        <div id="result-area">
+            <h2 id="winnerText" style="color: #e74c3c;">🎉 Người chơi X chiến thắng! 🎉</h2>
+            <button onclick="resetGame()">Chơi Lại Ván Khác</button>
+        </div>
+    </div>
 
     <script>
-        // Lấy thẻ canvas và thiết lập môi trường vẽ 2D
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
+        // Các biến lưu trữ trạng thái trò chơi
+        let targetNumber = 30;
+        let currentNumber = 0;
+        let currentPlayer = 1;
 
-        // Các biến cấu hình cơ bản
-        const gridSize = 20; // Kích thước mỗi ô vuông (rắn & mồi)
-        let snake = [{x: 200, y: 200}]; // Vị trí khởi đầu của rắn
-        let food = {x: 100, y: 100}; // Vị trí mồi
-        let dx = 0; // Hướng di chuyển trục X
-        let dy = -gridSize; // Hướng di chuyển trục Y (mặc định đi lên)
-        let score = 0;
-
-        // Hàm vẽ một ô vuông (dùng cho cả rắn và mồi)
-        function drawRect(x, y, color) {
-            ctx.fillStyle = color;
-            ctx.fillRect(x, y, gridSize - 2, gridSize - 2); // Trừ 2 để có viền nhỏ giữa các đốt
-        }
-
-        // Vòng lặp chính của game
-        function main() {
-            if (hasGameEnded()) {
-                alert("Thua rồi! Điểm của bạn là: " + score + "\nBấm OK hoặc F5 để chơi lại.");
-                document.location.reload(); // Tải lại trang khi thua
+        // Hàm bắt đầu game
+        function startGame() {
+            let inputVal = parseInt(document.getElementById("targetInput").value);
+            
+            if (isNaN(inputVal) || inputVal < 5) {
+                alert("Vui lòng nhập số mục tiêu hợp lệ (lớn hơn hoặc bằng 5)!");
                 return;
             }
 
-            // Thiết lập tốc độ game (100ms cập nhật 1 lần)
-            setTimeout(function() {
-                clearCanvas();
-                drawFood();
-                moveSnake();
-                drawSnake();
-                main(); // Lặp lại liên tục
-            }, 100);
+            targetNumber = inputVal;
+            currentNumber = 0;
+            currentPlayer = 1;
+
+            // Cập nhật giao diện
+            document.getElementById("targetDisplay").innerText = targetNumber;
+            updateUI();
+
+            // Chuyển đổi màn hình
+            document.getElementById("setup-area").style.display = "none";
+            document.getElementById("gameplay-area").style.display = "block";
+            document.getElementById("result-area").style.display = "none";
         }
 
-        // Xóa khung hình cũ
-        function clearCanvas() {
-            ctx.fillStyle = "#34495e";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-
-        // Vẽ con rắn
-        function drawSnake() {
-            snake.forEach((part, index) => {
-                const color = index === 0 ? "#2ecc71" : "#27ae60"; // Đầu màu sáng hơn thân
-                drawRect(part.x, part.y, color);
-            });
-        }
-
-        // Vẽ cục mồi
-        function drawFood() {
-            drawRect(food.x, food.y, "#e74c3c"); // Màu đỏ
-        }
-
-        // Logic di chuyển rắn
-        function moveSnake() {
-            // Tạo phần đầu mới dựa theo hướng di chuyển
-            const head = {x: snake[0].x + dx, y: snake[0].y + dy};
-            snake.unshift(head); // Thêm đầu mới vào mảng
-
-            // Nếu đầu chạm vào mồi
-            if (head.x === food.x && head.y === food.y) {
-                score += 10;
-                document.getElementById('score').innerText = score;
-                generateFood(); // Tạo mồi mới, KHÔNG xóa đuôi (rắn dài ra)
-            } else {
-                snake.pop(); // Nếu không ăn mồi, xóa phần đuôi cuối để giữ nguyên độ dài
+        // Hàm xử lý khi người chơi bấm nút +1, +2, +3
+        function countNumber(step) {
+            // Ngăn chặn việc đếm lố số mục tiêu
+            if (currentNumber + step > targetNumber) {
+                alert("Cảnh báo: Không được đếm vượt quá số mục tiêu!");
+                return;
             }
-        }
 
-        // Sinh mồi ngẫu nhiên
-        function generateFood() {
-            food.x = Math.floor(Math.random() * (canvas.width / gridSize)) * gridSize;
-            food.y = Math.floor(Math.random() * (canvas.height / gridSize)) * gridSize;
+            // Cộng số
+            currentNumber += step;
             
-            // Tránh trường hợp mồi sinh ra đè lên thân rắn
-            snake.forEach(function isFoodOnSnake(part) {
-                if (part.x == food.x && part.y == food.y) generateFood();
-            });
-        }
-
-        // Kiểm tra điều kiện thua
-        function hasGameEnded() {
-            // 1. Đâm vào tường
-            if (snake[0].x < 0 || snake[0].x >= canvas.width || 
-                snake[0].y < 0 || snake[0].y >= canvas.height) {
-                return true;
-            }
-            // 2. Tự cắn vào thân (kiểm tra từ đốt thứ 4 trở đi)
-            for (let i = 4; i < snake.length; i++) {
-                if (snake[i].x === snake[0].x && snake[i].y === snake[0].y) return true;
-            }
-            return false;
-        }
-
-        // Lắng nghe sự kiện bấm phím mũi tên
-        document.addEventListener("keydown", changeDirection);
-
-        function changeDirection(event) {
-            const LEFT_KEY = 37;
-            const RIGHT_KEY = 39;
-            const UP_KEY = 38;
-            const DOWN_KEY = 40;
-
-            const keyPressed = event.keyCode;
-            const goingUp = dy === -gridSize;
-            const goingDown = dy === gridSize;
-            const goingRight = dx === gridSize;
-            const goingLeft = dx === -gridSize;
-
-            // Đổi hướng (chống việc đang đi sang trái mà bấm sang phải thì tự cắn đuôi)
-            if (keyPressed === LEFT_KEY && !goingRight) {
-                dx = -gridSize; dy = 0;
-            }
-            if (keyPressed === UP_KEY && !goingDown) {
-                dx = 0; dy = -gridSize;
-            }
-            if (keyPressed === RIGHT_KEY && !goingLeft) {
-                dx = gridSize; dy = 0;
-            }
-            if (keyPressed === DOWN_KEY && !goingUp) {
-                dx = 0; dy = gridSize;
+            // Kiểm tra chiến thắng
+            if (currentNumber === targetNumber) {
+                updateUI();
+                endGame();
+            } else {
+                // Đổi lượt người chơi
+                currentPlayer = currentPlayer === 1 ? 2 : 1;
+                updateUI();
             }
         }
 
-        // Khởi động game
-        generateFood();
-        main();
+        // Hàm cập nhật các con số và nút bấm trên màn hình
+        function updateUI() {
+            // Cập nhật số
+            document.getElementById("currentNumberDisplay").innerText = currentNumber;
+            document.getElementById("remainingDisplay").innerText = targetNumber - currentNumber;
+
+            // Cập nhật lượt chơi và đổi màu cho dễ nhìn
+            let turnText = document.getElementById("playerTurnDisplay");
+            turnText.innerText = `▶ Lượt của: NGƯỜI CHƠI ${currentPlayer} ◀`;
+            if (currentPlayer === 2) {
+                turnText.classList.add("player-2-turn");
+            } else {
+                turnText.classList.remove("player-2-turn");
+            }
+
+            // Vô hiệu hóa nút nếu cộng vào sẽ vượt quá mục tiêu
+            let remaining = targetNumber - currentNumber;
+            document.getElementById("btn1").disabled = remaining < 1;
+            document.getElementById("btn2").disabled = remaining < 2;
+            document.getElementById("btn3").disabled = remaining < 3;
+        }
+
+        // Hàm kết thúc game
+        function endGame() {
+            document.getElementById("gameplay-area").style.display = "none";
+            document.getElementById("result-area").style.display = "block";
+            document.getElementById("winnerText").innerText = `🎉 NGƯỜI CHƠI ${currentPlayer} CHIẾN THẮNG! 🎉`;
+        }
+
+        // Hàm reset về màn hình thiết lập
+        function resetGame() {
+            document.getElementById("setup-area").style.display = "block";
+            document.getElementById("result-area").style.display = "none";
+        }
     </script>
+
 </body>
 </html>
