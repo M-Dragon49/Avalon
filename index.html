@@ -6,31 +6,122 @@
     <title>Game Portal - Boardgame Hub</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap');
+        
         :root {
-            --gold: #f59e0b; --dark: #0f172a; --glass-bg: rgba(30, 41, 59, 0.8);
+            --gold: #f59e0b; 
+            --dark: #0f172a; 
+            --glass-bg: rgba(30, 41, 59, 0.8);
             --glass-border: rgba(255, 255, 255, 0.15);
         }
+        
+        * {
+            box-sizing: border-box; /* Đảm bảo padding không làm tràn khung trên mobile */
+        }
+
         body {
-            font-family: 'Montserrat', sans-serif; background: var(--dark);
+            font-family: 'Montserrat', sans-serif; 
+            background: var(--dark);
             background-image: radial-gradient(circle at top right, #1e293b, #0f172a);
-            color: #f8fafc; margin: 0; min-height: 100vh;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: #f8fafc; 
+            margin: 0; 
+            min-height: 100vh;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
         }
-        .container { width: 100%; max-width: 800px; text-align: center; padding: 20px; }
-        h1 { color: var(--gold); font-size: 2.5rem; margin-bottom: 0.5rem; text-shadow: 0 0 20px rgba(245, 158, 11, 0.3); }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-top: 40px; }
+
+        .container { 
+            width: 100%; 
+            max-width: 800px; 
+            text-align: center; 
+            padding: 20px; 
+        }
+
+        h1 { 
+            color: var(--gold); 
+            font-size: 2.5rem; 
+            margin-bottom: 0.5rem; 
+            text-shadow: 0 0 20px rgba(245, 158, 11, 0.3); 
+        }
+
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Giảm minmax một chút để linh hoạt hơn */
+            gap: 25px; 
+            margin-top: 40px; 
+        }
+
         .card {
-            background: var(--glass-bg); backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border); border-radius: 24px;
-            padding: 30px; transition: 0.3s; cursor: pointer; text-decoration: none; color: white;
+            background: var(--glass-bg); 
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border); 
+            border-radius: 24px;
+            padding: 30px; 
+            transition: 0.3s; 
+            cursor: pointer; 
+            text-decoration: none; 
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        .card:hover { transform: translateY(-10px); border-color: var(--gold); box-shadow: 0 10px 30px rgba(245, 158, 11, 0.1); }
-        .icon { font-size: 50px; margin-bottom: 15px; }
-        h2 { margin: 10px 0; font-weight: 800; text-transform: uppercase; }
+
+        .card:hover { 
+            transform: translateY(-10px); 
+            border-color: var(--gold); 
+            box-shadow: 0 10px 30px rgba(245, 158, 11, 0.1); 
+        }
+
+        .icon { 
+            font-size: 50px; 
+            margin-bottom: 15px; 
+        }
+
+        h2 { 
+            margin: 10px 0; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+        }
+
         .btn {
-            display: inline-block; margin-top: 20px; padding: 12px 30px;
-            background: var(--gold); color: black; border-radius: 12px;
-            font-weight: bold; text-transform: uppercase; font-size: 0.85rem;
+            display: inline-block; 
+            margin-top: auto; /* Đẩy nút xuống dưới cùng nếu chữ bị lệch */
+            padding: 12px 30px;
+            background: var(--gold); 
+            color: black; 
+            border-radius: 12px;
+            font-weight: bold; 
+            text-transform: uppercase; 
+            font-size: 0.85rem;
+        }
+
+        /* Tối ưu cho màn hình Mobile (Dưới 600px) */
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 1.8rem; /* Thu nhỏ tiêu đề chính */
+            }
+            .grid {
+                grid-template-columns: 1fr; /* Xếp thành 1 cột dọc trên điện thoại */
+                gap: 15px;
+                margin-top: 25px;
+            }
+            .card {
+                padding: 20px; /* Giảm khoảng trống trong thẻ để tiết kiệm diện tích */
+            }
+            .icon {
+                font-size: 40px;
+            }
+            h2 {
+                font-size: 1.2rem;
+            }
+            .btn {
+                padding: 10px 25px;
+                font-size: 0.8rem;
+            }
         }
     </style>
 </head>
