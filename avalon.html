@@ -109,7 +109,7 @@
         .selectable-name.selected-red { background: var(--red); border-color: white; }
         .selectable-name.disabled { opacity: 0.4; pointer-events: none; border-color: var(--red); text-decoration: line-through; }
 
-        /* --- CSS THÊM MỚI CHO NÚT QUAY LẠI --- */
+        /* NÚT QUAY LẠI TRANG CHỦ */
         .back-home {
             position: fixed; top: 20px; left: 20px; z-index: 1000;
             background: var(--glass-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
@@ -218,7 +218,6 @@
 </div>
 
 <script>
-    // --- CẤU HÌNH FIREBASE ---
     const firebaseConfig = {
         apiKey: "AIzaSyAFx9KTvVic2jxrT28Zx9wLIfBABISXnTk",
         authDomain: "avalon-6951b.firebaseapp.com",
@@ -239,16 +238,19 @@
     }
     
     let myName = localStorage.getItem('avalon_name') || '';
-    let roomID = localStorage.getItem('avalon_room') || '';
+    
+    // Đã đổi sang sessionStorage: XÓA DỮ LIỆU PHÒNG KHI ĐÓNG TAB
+    let roomID = sessionStorage.getItem('avalon_room') || ''; 
+    
     let state = null;
     let roomPlayersObj = {}; 
     let isHostGlobal = false;
     let botTimeout = null;
 
     window.onload = () => {
-        if (roomID && myName) {
+        if (myName) document.getElementById('in-name').value = myName;
+        if (roomID) {
             document.getElementById('in-room').value = roomID;
-            document.getElementById('in-name').value = myName;
             joinGame(); 
         }
     }
@@ -270,7 +272,7 @@
         if(!roomID || !myName) return alert("Vui lòng điền đủ tên và mã phòng!");
         
         localStorage.setItem('avalon_name', myName);
-        localStorage.setItem('avalon_room', roomID);
+        sessionStorage.setItem('avalon_room', roomID); // Lưu phòng vào session
 
         if (mode === 'create') db.ref('rooms/' + roomID).remove();
         joinGame();
@@ -279,11 +281,11 @@
     function joinGame() {
         const pRef = db.ref('rooms/' + roomID + '/players/' + myID);
         
-        // CƠ CHẾ AUTO-RECONNECT
         db.ref('.info/connected').on('value', snap => {
             if (snap.val() === true) {
                 pRef.update({ offline: false });
-                pRef.onDisconnect().update({ offline: true });
+                // TỰ ĐỘNG XÓA NGƯỜI CHƠI KHỎI PHÒNG KHI ĐÓNG WEB / MẤT KẾT NỐI
+                pRef.onDisconnect().remove(); 
             }
         });
 
@@ -306,8 +308,8 @@
             });
             
             if (!amIHere && document.getElementById('view-login').classList.contains('hidden')) {
-                alert("Bạn đã bị kick khỏi phòng hoặc phòng đã giải tán!");
-                localStorage.removeItem('avalon_room');
+                alert("Bạn đã bị kick, tắt web hoặc phòng đã giải tán!");
+                sessionStorage.removeItem('avalon_room');
                 window.location.reload();
                 return;
             }
@@ -398,7 +400,6 @@
     function runBotLogic(s) {
         if (!isHostGlobal || !s) return;
         
-        // Bọc bảo vệ dữ liệu chống Firebase xóa mảng trống
         s.votes = s.votes || {};
         s.missions = s.missions || {};
         s.team = s.team || [];
@@ -490,12 +491,9 @@
         if (changed) sync(s);
     }
 
-    // --- FIX TRIỆT ĐỂ LỖI KHÔNG BẤM ĐƯỢC START GAME ---
     function startGame() {
         if (!isHostGlobal) return;
         
-        // Lấy trực tiếp danh sách từ bộ nhớ tạm trên giao diện
-        // Khắc phục 100% tình trạng mạng lag khiến đếm thiếu người
         const ps = Object.values(roomPlayersObj).sort((a, b) => a.joinedAt - b.joinedAt);
         const n = ps.length;
         
@@ -532,11 +530,10 @@
 
     function leaveRoom() {
         if(roomID && myID) db.ref('rooms/' + roomID + '/players/' + myID).remove();
-        localStorage.removeItem('avalon_room');
+        sessionStorage.removeItem('avalon_room');
         window.location.reload();
     }
 
-    // --- FIX KHÔNG PHỤ THUỘC MẠNG KHI CHƠI LẠI VÁN MỚI ---
     function resetGameForLobby() {
         if (state) {
             if (isHostGlobal) {
@@ -551,7 +548,6 @@
     let killTarget = null;
 
     function updateUI(s) {
-        // Bọc bảo vệ dữ liệu chống Firebase xóa mảng trống
         s.votes = s.votes || {};
         s.missions = s.missions || {};
         s.team = s.team || [];
