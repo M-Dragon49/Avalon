@@ -53,6 +53,18 @@
             border-radius: 50%; cursor: pointer; transition: 0.3s;
         }
         .circle.selected { background: var(--blue); border-color: white; box-shadow: 0 0 20px var(--blue); transform: scale(1.1); }
+        
+        /* CLASS MỚI ĐỂ LÀM MỜ VÒNG TRÒN ĐÃ ĐÁNH */
+        .circle.dimmed { 
+            opacity: 0.15; /* Làm mờ đi */
+            cursor: not-allowed; /* Đổi con trỏ chuột */
+            pointer-events: none; /* Khóa hoàn toàn không cho click */
+            background: transparent;
+            border-color: #334155;
+            box-shadow: none;
+            transform: scale(0.9); /* Thu nhỏ lại một chút cho đẹp */
+        }
+
         .indicator {
             text-align: center; padding: 12px; border-radius: 12px; margin-bottom: 20px; font-weight: 800;
             background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border);
@@ -129,10 +141,14 @@
         let localReady = false;
         let remoteReady = false;
         
+        let amILoser = false; 
+
         let myName = "";
         let oppName = "Đối Thủ";
 
-        let rows = [3, 4, 7], selRow = null, selCount = 0;
+        // Thêm mảng initialRows để ghi nhớ cấu trúc ban đầu
+        const initialRows = [3, 4, 7];
+        let rows = [...initialRows], selRow = null, selCount = 0;
         let scores = {you: 0, opp: 0};
 
         peer.on('open', id => { 
@@ -141,7 +157,6 @@
             document.getElementById('status').innerText = "Sẵn sàng nhận thách đấu!"; 
         });
         
-        // BẢN VÁ LỖI PEERJS: Host chờ Guest kết nối hẳn mới gửi lệnh Start
         peer.on('connection', c => { 
             const inputName = document.getElementById('my-name-input').value.trim();
             if (!inputName) {
@@ -157,21 +172,14 @@
             
             const startSequence = () => {
                 const randomStarter = Math.random() < 0.5;
-                conn.send({type: 'START_INFO', youStart: !randomStarter, hostName: myName});
-                startRandomSequence(randomStarter, oppName); 
+                conn.send({type: 'START_INFO', youStart: !randomStarter, hostName: myName, isRandom: true});
+                startTurnSequence(randomStarter, oppName, true); 
             };
 
-            // ĐẢM BẢO đường truyền thực sự mở trước khi gửi
-            if (conn.open) {
-                setTimeout(startSequence, 500);
-            } else {
-                conn.on('open', () => {
-                    setTimeout(startSequence, 500);
-                });
-            }
+            if (conn.open) { setTimeout(startSequence, 500); } 
+            else { conn.on('open', () => { setTimeout(startSequence, 500); }); }
         });
 
-        // GUEST KẾT NỐI
         function connectToPeer() {
             const inputName = document.getElementById('my-name-input').value.trim();
             const id = document.getElementById('peer-id-input').value.trim();
@@ -192,13 +200,8 @@
         }
 
         function setupConn() {
-            // FIX: Gửi tên một cách an toàn
-            const sendUserInfo = () => {
-                conn.send({type: 'USER_INFO', name: myName});
-            };
-            
-            if (conn.open) { sendUserInfo(); } 
-            else { conn.on('open', sendUserInfo); }
+            const sendUserInfo = () => { conn.send({type: 'USER_INFO', name: myName}); };
+            if (conn.open) { sendUserInfo(); } else { conn.on('open', sendUserInfo); }
 
             conn.on('data', data => {
                 if(data.type === 'USER_INFO') {
@@ -213,7 +216,7 @@
                     document.getElementById('ready-overlay').style.display = 'none';
                     resetGameUI();
 
-                    startRandomSequence(data.youStart, oppName); 
+                    startTurnSequence(data.youStart, oppName, data.isRandom); 
                 }
                 if(data.type === 'MOVE') { 
                     rows = data.rows; isMyTurn = true; render(); checkWin("OPP"); 
@@ -221,10 +224,6 @@
                 if(data.type === 'READY_UP') {
                     remoteReady = true;
                     checkBothReady();
-                }
-                if(data.type === 'RESTART') {
-                    // Logic tương thích cũ (nếu có)
-                    resetGameUI();
                 }
             });
             
@@ -234,7 +233,7 @@
             });
         }
 
-        // --- LOGIC BOT GIỮ NGUYÊN ---
+        // --- BỘ NÃO BOT ---
         function startBotMode() {
             const inputName = document.getElementById('my-name-input').value.trim();
             if (!inputName) return alert("Vui lòng nhập tên của bạn trước khi chơi với máy!");
@@ -245,7 +244,7 @@
             document.getElementById('name-opp').innerText = oppName;
             
             const randomStarter = Math.random() < 0.5;
-            startRandomSequence(randomStarter, oppName);
+            startTurnSequence(randomStarter, oppName, true); 
         }
 
         function executeBotTurn() {
@@ -285,15 +284,26 @@
             return { row: randRow.i, take: 1 };
         }
 
-        // --- GIAO DIỆN & LUỒNG TRÒ CHƠI ---
-        function startRandomSequence(iStart, opponentName) {
+        // --- GIAO DIỆN & PHÂN ĐỊNH LƯỢT ---
+        function startTurnSequence(iStart, opponentName, isRandom) {
             const overlay = document.getElementById('randomizing-overlay');
             overlay.style.display = 'flex';
             document.getElementById('name-you').innerText = myName;
             
+            document.getElementById('random-msg').style.color = "var(--gold)"; 
+
+            if (isRandom) {
+                document.getElementById('random-msg').innerText = "Đang tung đồng xu...";
+                document.getElementById('random-sub').innerText = "Ai sẽ đi trước đây?";
+            } else {
+                document.getElementById('random-msg').innerText = "Đang xét lượt...";
+                document.getElementById('random-sub').innerText = "Người thua ván trước được đi trước!";
+            }
+            
             setTimeout(() => {
                 document.getElementById('random-msg').innerText = iStart ? `${myName.toUpperCase()} ĐI TRƯỚC!` : `${opponentName.toUpperCase()} ĐI TRƯỚC!`;
                 document.getElementById('random-msg').style.color = iStart ? "var(--green)" : "var(--red)";
+                document.getElementById('random-sub').innerText = "";
                 
                 setTimeout(() => {
                     overlay.style.display = 'none';
@@ -311,15 +321,33 @@
             resetGameUI();
         }
 
+        // --- HÀM RENDER MỚI: VẼ CẢ VIÊN CÒN VÀ VIÊN ĐÃ BỊ LẤY (MỜ ĐI) ---
         function render() {
-            const b = document.getElementById('board'); b.innerHTML = '';
-            rows.forEach((count, rIdx) => {
-                const rDiv = document.createElement('div'); rDiv.className = 'row';
-                for(let i=0; i<count; i++) {
-                    const c = document.createElement('div'); c.className = 'circle';
+            const b = document.getElementById('board'); 
+            b.innerHTML = '';
+            
+            initialRows.forEach((totalCount, rIdx) => {
+                const rDiv = document.createElement('div'); 
+                rDiv.className = 'row';
+                
+                const activeCount = rows[rIdx];
+                const removedCount = totalCount - activeCount;
+
+                // 1. Vẽ các viên còn lại có thể click
+                for(let i=0; i<activeCount; i++) {
+                    const c = document.createElement('div'); 
+                    c.className = 'circle';
                     c.onclick = () => select(rIdx, c);
                     rDiv.appendChild(c);
                 }
+
+                // 2. Vẽ các viên đã bị lấy (làm mờ, không click được)
+                for(let i=0; i<removedCount; i++) {
+                    const c = document.createElement('div'); 
+                    c.className = 'circle dimmed'; 
+                    rDiv.appendChild(c);
+                }
+
                 b.appendChild(rDiv);
             });
             updateTurnText(isMyTurn, false);
@@ -365,6 +393,8 @@
                 const winName = (last === "YOU" ? oppName : myName);
                 const isYouWin = (winName === myName);
                 
+                amILoser = !isYouWin; 
+
                 if(isYouWin) scores.you++; else scores.opp++;
                 document.getElementById('s-you').innerText = scores.you;
                 document.getElementById('s-opp').innerText = scores.opp;
@@ -391,8 +421,7 @@
                 setTimeout(() => {
                     overlay.style.display = 'none';
                     resetGameUI();
-                    const randomStarter = Math.random() < 0.5;
-                    startRandomSequence(randomStarter, oppName);
+                    startTurnSequence(amILoser, oppName, false);
                 }, 1000);
             } else {
                 localReady = true;
@@ -427,16 +456,19 @@
                     resetGameUI();
 
                     if (isHost) {
-                        const randomStarter = Math.random() < 0.5;
-                        conn.send({type: 'START_INFO', youStart: !randomStarter, hostName: myName});
-                        startRandomSequence(randomStarter, oppName);
+                        const hostStartsNext = amILoser; 
+                        conn.send({type: 'START_INFO', youStart: !hostStartsNext, hostName: myName, isRandom: false});
+                        startTurnSequence(hostStartsNext, oppName, false);
                     }
                 }, 1000);
             }
         }
 
         function resetGameUI() {
-            rows = [3, 4, 7]; selRow = null; selCount = 0;
+            // Khôi phục lại mảng trạng thái dựa trên cấu trúc ban đầu
+            rows = [...initialRows]; 
+            selRow = null; 
+            selCount = 0;
             document.getElementById('btn-restart').style.display = 'none';
             document.getElementById('btn-move').style.display = 'block';
             document.getElementById('btn-move').disabled = true;
